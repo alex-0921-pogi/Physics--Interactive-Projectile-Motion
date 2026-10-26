@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Physics Lab: Projectile Motion</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- MathJax for rendering math formulas nicely -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js for trajectory and velocity graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Canvas Confetti for quiz rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Glassmorphism styles */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card {
+            background: rgba(51, 65, 85, 0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Tab active state transition */
+        .tab-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+        }
+
+        /* Slider Custom Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #334155;
+            border-radius: 8px;
+            height: 6px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #60a5fa;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #93c5fd;
+        }
+
+        /* Flip card animation for flashcards */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden text-slate-200">
+
+    <!-- NAVIGATION BAR -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-700/50 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- Brand / Logo -->
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl shadow-lg shadow-blue-500/30">
+                    <i data-lucide="orbit" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none text-white tracking-tight">PhysiX Lab</h1>
+                    <span class="text-xs text-blue-400 font-medium">Kinematics & Projectile Simulation</span>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+                <button onclick="switchTab('simulation')" id="tab-simulation" class="tab-btn active px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                    <i data-lucide="play-circle" class="w-4 h-4"></i> Simulation
+                </button>
+                <button onclick="switchTab('theory')" id="tab-theory" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-4 h-4"></i> Formulas & Theory
+                </button>
+                <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="award" class="w-4 h-4"></i> Practice & Quiz
+                </button>
+                <button onclick="switchTab('flashcards')" id="tab-flashcards" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4"></i> Flashcards
+                </button>
+            </nav>
+
+            <!-- Quick Info Badge -->
+            <div class="hidden xl:flex items-center gap-2 bg-blue-950/40 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs text-blue-300">
+                <i data-lucide="sparkles" class="w-4 h-4 text-blue-400"></i> Interactive Student Presentation Mode
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: SIMULATION SECTION -->
+        <!-- ========================================== -->
+        <section id="sec-simulation" class="space-y-6">
+            
+            <!-- Top Dashboard Summary Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-blue-500">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Max Height ($H$)</span>
+                        <i data-lucide="arrow-up" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-1">
+                        <span id="stat-max-height" class="text-2xl lg:text-3xl font-extrabold text-white code-font">0.00</span>
+                        <span class="text-sm text-slate-400">m</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-emerald-500">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Max Distance ($R$)</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-emerald-400"></i>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-1">
+                        <span id="stat-max-distance" class="text-2xl lg:text-3xl font-extrabold text-white code-font">0.00</span>
+                        <span class="text-sm text-slate-400">m</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-purple-500">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Time of Flight ($T$)</span>
+                        <i data-lucide="clock" class="w-4 h-4 text-purple-400"></i>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-1">
+                        <span id="stat-total-time" class="text-2xl lg:text-3xl font-extrabold text-white code-font">0.00</span>
+                        <span class="text-sm text-slate-400">s</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-amber-500">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Velocity ($v$)</span>
+                        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                    </div>
+                    <div class="mt-2 flex items-baseline gap-1">
+                        <span id="stat-current-vel" class="text-2xl lg:text-3xl font-extrabold text-white code-font">0.00</span>
+                        <span class="text-sm text-slate-400">m/s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas & Controls Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Interactive Canvas (8 Cols) -->
+                <div class="lg:col-span-8 flex flex-col gap-4">
+                    <div class="glass-panel rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between shadow-xl min-h-[420px]">
+                        <!-- Canvas Header Overlay -->
+                        <div class="flex justify-between items-center z-10 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    2D Kinematics Space
+                                </span>
+                            </div>
+                            <!-- Canvas Quick Toggles -->
+                            <div class="flex items-center gap-2 text-xs">
+                                <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-700 transition">
+                                    <input type="checkbox" id="chk-vectors" checked class="rounded border-slate-700 text-blue-500 focus:ring-0">
+                                    <span>Velocity Vectors</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-700 transition">
+                                    <input type="checkbox" id="chk-grid" checked class="rounded border-slate-700 text-blue-500 focus:ring-0">
+                                    <span>Grid</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-700 transition">
+                                    <input type="checkbox" id="chk-air-resistance" class="rounded border-slate-700 text-blue-500 focus:ring-0">
+                                    <span class="text-amber-400">Air Drag</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Frame -->
+                        <div class="relative w-full flex-1 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden min-h-[340px]">
+                            <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+                            <!-- Live Telemetry Badge on Canvas -->
+                            <div class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-lg p-2 text-xs code-font text-slate-300 flex gap-4">
+                                <div>X: <span id="telemetry-x" class="text-blue-400">0.0</span> m</div>
+                                <div>Y: <span id="telemetry-y" class="text-emerald-400">0.0</span> m</div>
+                                <div>t: <span id="telemetry-t" class="text-purple-400">0.00</span> s</div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Controls Bar -->
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 z-10">
+                            <div class="flex items-center gap-2">
+                                <button id="btn-fire" onclick="startLaunch()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-2 transition transform active:scale-95">
+                                    <i data-lucide="play" class="w-4 h-4 fill-current"></i> Launch
+                                </button>
+                                <button id="btn-pause" onclick="togglePause()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl border border-slate-700 flex items-center gap-2 transition">
+                                    <i data-lucide="pause" class="w-4 h-4"></i> Pause
+                                </button>
+                                <button id="btn-reset" onclick="resetSim()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl border border-slate-700 flex items-center gap-2 transition">
+                                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400 font-medium">Speed:</span>
+                                <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700 text-xs font-semibold">
+                                    <button onclick="setSpeed(0.25)" class="speed-btn px-2 py-1 rounded text-slate-400 hover:text-white">0.25x</button>
+                                    <button onclick="setSpeed(1.0)" class="speed-btn active bg-blue-600 px-2 py-1 rounded text-white">1x</button>
+                                    <button onclick="setSpeed(2.0)" class="speed-btn px-2 py-1 rounded text-slate-400 hover:text-white">2x</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Control Panel (4 Cols) -->
+                <div class="lg:col-span-4 space-y-4">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-700/60 shadow-xl space-y-5">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2 border-b border-slate-700/60 pb-3">
+                            <i data-lucide="sliders" class="w-5 h-5 text-blue-400"></i> Control Parameters
+                        </h2>
+
+                        <!-- Velocity Slider -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-semibold text-slate-300">Initial Velocity ($v_0$)</label>
+                                <span class="text-sm font-bold text-blue-400 code-font"><span id="val-velocity">30</span> m/s</span>
+                            </div>
+                            <input type="range" id="input-velocity" min="5" max="100" value="30" class="w-full" oninput="updateParams()">
+                        </div>
+
+                        <!-- Angle Slider -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-semibold text-slate-300">Launch Angle ($\theta$)</label>
+                                <span class="text-sm font-bold text-emerald-400 code-font"><span id="val-angle">45</span>°</span>
+                            </div>
+                            <input type="range" id="input-angle" min="0" max="90" value="45" class="w-full" oninput="updateParams()">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-medium pt-0.5">
+                                <span>0° (Flat)</span>
+                                <span>45° (Optimum)</span>
+                                <span>90° (Vertical)</span>
+                            </div>
+                        </div>
+
+                        <!-- Initial Height Slider -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-semibold text-slate-300">Initial Height ($y_0$)</label>
+                                <span class="text-sm font-bold text-purple-400 code-font"><span id="val-height">0</span> m</span>
+                            </div>
+                            <input type="range" id="input-height" min="0" max="50" value="0" class="w-full" oninput="updateParams()">
+                        </div>
+
+                        <!-- Gravity Presets -->
+                        <div class="space-y-2 pt-2 border-t border-slate-800">
+                            <label class="text-xs font-semibold text-slate-300 block">Gravity Environment ($g$)</label>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                <button onclick="setGravity(9.81, 'Earth')" id="env-earth" class="env-btn active bg-blue-600 text-white text-xs py-1.5 px-2 rounded-lg font-medium text-center transition">Earth</button>
+                                <button onclick="setGravity(1.62, 'Moon')" id="env-moon" class="env-btn bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs py-1.5 px-2 rounded-lg font-medium text-center transition">Moon</button>
+                                <button onclick="setGravity(3.71, 'Mars')" id="env-mars" class="env-btn bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs py-1.5 px-2 rounded-lg font-medium text-center transition">Mars</button>
+                                <button onclick="setGravity(24.79, 'Jupiter')" id="env-jupiter" class="env-btn bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs py-1.5 px-2 rounded-lg font-medium text-center transition">Jupiter</button>
+                            </div>
+                            <div class="flex justify-between items-center pt-1">
+                                <span class="text-xs text-slate-400">Custom $g$:</span>
+                                <span class="text-xs font-bold text-amber-400 code-font"><span id="val-gravity">9.81</span> m/s²</span>
+                            </div>
+                        </div>
+
+                        <!-- Target Object Challenge Mode -->
+                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                    <i data-lucide="target" class="w-4 h-4"></i> Target Challenge
+                                </span>
+                                <input type="checkbox" id="chk-target" class="rounded border-slate-700 text-amber-500 focus:ring-0" onchange="toggleTarget()">
+                            </div>
+                            <p class="text-[11px] text-slate-400">Enable a target downrange to test your physics calculations!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphs Section for Live Analysis -->
+            <div class="glass-panel rounded-2xl p-5 border border-slate-700/60 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i data-lucide="line-chart" class="w-5 h-5 text-indigo-400"></i> Real-time Motion Analytics
+                    </h3>
+                    <div class="flex gap-2">
+                        <button onclick="setChartType('position')" id="chart-btn-pos" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium">Height vs Time</button>
+                        <button onclick="setChartType('velocity')" id="chart-btn-vel" class="px-3 py-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg text-xs font-medium">Velocity Components</button>
+                    </div>
+                </div>
+                <div class="h-56 w-full relative">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: FORMULAS & THEORY SECTION -->
+        <!-- ========================================== -->
+        <section id="sec-theory" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                    <i data-lucide="book-open" class="text-blue-400"></i> Kinematics & Projectile Motion Decomposition
+                </h2>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">
+                    Projectile motion is a form of motion experienced by an object that is thrown near the Earth's surface and moves along a curved path under the action of gravity only. Key to understanding it is the <b>independence of horizontal and vertical motions</b>.
+                </p>
+
+                <!-- Core Equations Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    
+                    <!-- Horizontal Motion Box -->
+                    <div class="glass-card rounded-xl p-5 border-l-4 border-l-blue-500 space-y-3">
+                        <div class="flex items-center gap-2 text-blue-400 font-bold text-lg">
+                            <i data-lucide="move-right" class="w-5 h-5"></i> Horizontal Component ($x$-axis)
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Assuming negligible air resistance, acceleration in the horizontal direction is zero ($a_x = 0$). Velocity remains constant.
+                        </p>
+                        <div class="bg-slate-900/90 p-3 rounded-lg code-font text-sm text-blue-300 space-y-1">
+                            <div>$v_{0x} = v_0 \cdot \cos(\theta)$</div>
+                            <div>$x(t) = v_{0x} \cdot t$</div>
+                            <div>$a_x = 0$</div>
+                        </div>
+                    </div>
+
+                    <!-- Vertical Motion Box -->
+                    <div class="glass-card rounded-xl p-5 border-l-4 border-l-emerald-500 space-y-3">
+                        <div class="flex items-center gap-2 text-emerald-400 font-bold text-lg">
+                            <i data-lucide="move-up" class="w-5 h-5"></i> Vertical Component ($y$-axis)
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Subject to constant downward gravitational acceleration ($a_y = -g$). Vertical velocity decreases going up, becomes 0 at peak, and increases downward.
+                        </p>
+                        <div class="bg-slate-900/90 p-3 rounded-lg code-font text-sm text-emerald-300 space-y-1">
+                            <div>$v_{0y} = v_0 \cdot \sin(\theta)$</div>
+                            <div>$y(t) = y_0 + v_{0y} \cdot t - \frac{1}{2}g t^2$</div>
+                            <div>$v_y(t) = v_{0y} - g \cdot t$</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Derived Key Parameters -->
+                <h3 class="text-lg font-bold text-white mt-8 mb-4 flex items-center gap-2">
+                    <i data-lucide="calculator" class="text-purple-400"></i> Essential Derived Equations (Flat Ground $y_0 = 0$)
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-4 rounded-xl border border-slate-700/50">
+                        <span class="text-xs font-semibold text-purple-400 uppercase tracking-wider block mb-1">Time of Flight ($T$)</span>
+                        <div class="text-lg text-white font-bold my-2">
+                            $$T = \frac{2 v_0 \sin\theta}{g}$$
+                        </div>
+                        <p class="text-xs text-slate-400">Total time the projectile stays airborne before returning to original height.</p>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-xl border border-slate-700/50">
+                        <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider block mb-1">Maximum Height ($H$)</span>
+                        <div class="text-lg text-white font-bold my-2">
+                            $$H = \frac{v_0^2 \sin^2\theta}{2g}$$
+                        </div>
+                        <p class="text-xs text-slate-400">Peak vertical altitude achieved when vertical velocity component drops to zero.</p>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-xl border border-slate-700/50">
+                        <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider block mb-1">Horizontal Range ($R$)</span>
+                        <div class="text-lg text-white font-bold my-2">
+                            $$R = \frac{v_0^2 \sin(2\theta)}{g}$$
+                        </div>
+                        <p class="text-xs text-slate-400">Maximum horizontal distance traveled. Peak range occurs at $\theta = 45^\circ$.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: PRACTICE & QUIZ SECTION -->
+        <!-- ========================================== -->
+        <section id="sec-quiz" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-700/60 max-w-3xl mx-auto space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="help-circle" class="text-amber-400"></i> Concept Mastery Quiz
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Test your understanding of kinematics & projectile motion</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">Score</span>
+                        <span id="quiz-score" class="text-xl font-extrabold text-emerald-400 code-font">0 / 0</span>
+                    </div>
+                </div>
+
+                <!-- Active Question Container -->
+                <div id="quiz-container" class="space-y-4">
+                    <!-- Dynamic Question Loaded Here -->
+                </div>
+
+                <!-- Quiz Controls -->
+                <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+                    <button onclick="resetQuiz()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition">
+                        Restart Quiz
+                    </button>
+                    <button id="btn-next-q" onclick="nextQuestion()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-600/30 transition hidden">
+                        Next Question <i data-lucide="chevron-right" class="w-4 h-4 inline"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: FLASHCARDS SECTION -->
+        <!-- ========================================== -->
+        <section id="sec-flashcards" class="hidden space-y-6">
+            <div class="max-w-2xl mx-auto text-center space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center justify-center gap-2">
+                        <i data-lucide="layers" class="text-purple-400"></i> Physics Key Concepts Flashcards
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Click card to flip and reveal explanation</p>
+                </div>
+
+                <!-- Flashcard Flip Container -->
+                <div class="perspective-1000 w-full h-80 cursor-pointer" onclick="flipCard()">
+                    <div id="flashcard-inner" class="relative w-full h-full duration-500 transform-style-3d glass-panel rounded-2xl border border-slate-700 shadow-2xl flex items-center justify-center p-8">
+                        
+                        <!-- Front -->
+                        <div class="absolute inset-0 backface-hidden flex flex-col items-center justify-center p-6 text-center space-y-4">
+                            <span class="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/20">Concept #<span id="fc-num">1</span></span>
+                            <h3 id="fc-front" class="text-xl lg:text-2xl font-bold text-white">What angle yields the maximum horizontal range on flat ground?</h3>
+                            <span class="text-xs text-slate-500 flex items-center gap-1">
+                                <i data-lucide="rotate-cw" class="w-3 h-3"></i> Click to flip
+                            </span>
+                        </div>
+
+                        <!-- Back -->
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-slate-900/90 rounded-2xl border border-blue-500/40">
+                            <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">Explanation</span>
+                            <p id="fc-back" class="text-base text-slate-200 leading-relaxed">
+                                <b>45 Degrees.</b> <br>The range formula is $R = \frac{v_0^2 \sin(2\theta)}{g}$. Since $\sin(\theta)$ reaches its maximum value of $1$ at $90^\circ$, setting $2\theta = 90^\circ$ gives $\theta = 45^\circ$.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation controls -->
+                <div class="flex items-center justify-between">
+                    <button onclick="prevFlashcard()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i> Previous
+                    </button>
+                    <span class="text-xs text-slate-400 code-font"><span id="fc-index">1</span> / <span id="fc-total">5</span></span>
+                    <button onclick="nextFlashcard()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                        Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800/80 bg-slate-950/60 py-4 px-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>Designed for Physics Classroom Demonstrations & Interactive Student Learning</span>
+            <span class="text-slate-600">Kinematics & Dynamics • Web-Based Physics Engine</span>
+        </div>
+    </footer>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // ==========================================
+        // APP STATE & CONSTANTS
+        // ==========================================
+        let state = {
+            v0: 30,             // m/s
+            angle: 45,          // deg
+            y0: 0,              // m
+            g: 9.81,            // m/s^2
+            airDrag: false,     // drag flag
+            dragCoeff: 0.002,   // simple air resistance constant
+            showVectors: true,
+            showGrid: true,
+            simSpeed: 1.0,
+            
+            // Simulation runtime state
+            running: false,
+            paused: false,
+            t: 0,               // time in seconds
+            dt: 0.016,          // time step per frame (~60fps)
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            path: [],           // stored trajectory points [{x, y}]
+            
+            // Calculated theoretical stats
+            maxHeight: 0,
+            maxDistance: 0,
+            totalTime: 0,
+            
+            // Target Challenge
+            targetActive: false,
+            targetX: 60,
+            targetY: 0,
+            targetRadius: 4,
+            targetHit: false,
+
+            // Active Tab
+            currentTab: 'simulation'
+        };
+
+        let canvas, ctx;
+        let analyticsChart;
+        let animationFrameId = null;
+
+        // ==========================================
+        // INITIALIZATION ON LOAD
+        // ==========================================
+        window.onload = function() {
+            lucide.createIcons();
+            initCanvas();
+            initChart();
+            updateParams();
+            renderQuizQuestion();
+            updateFlashcard();
+            
+            // Window Resize listener
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                drawSim();
+            });
+        };
+
+        // ==========================================
+        // NAVIGATION & TAB SWITCHING
+        // ==========================================
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            ['simulation', 'theory', 'quiz', 'flashcards'].forEach(id => {
+                const sec = document.getElementById(`sec-${id}`);
+                const btn = document.getElementById(`tab-${id}`);
+                if (id === tabId) {
+                    sec.classList.remove('hidden');
+                    btn.classList.add('active');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    sec.classList.add('hidden');
+                    btn.classList.remove('active');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            // Re-render MathJax if navigating to theory or flashcards
+            if (window.MathJax && (tabId === 'theory' || tabId === 'flashcards')) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // ==========================================
+        // CANVAS & PHYSICS ENGINE
+        // ==========================================
+        function initCanvas() {
+            canvas = document.getElementById('simCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+
+            // Event Listeners for Controls & Checkboxes
+            document.getElementById('chk-vectors').addEventListener('change', (e) => {
+                state.showVectors = e.target.checked;
+                drawSim();
+            });
+            document.getElementById('chk-grid').addEventListener('change', (e) => {
+                state.showGrid = e.target.checked;
+                drawSim();
+            });
+            document.getElementById('chk-air-resistance').addEventListener('change', (e) => {
+                state.airDrag = e.target.checked;
+                calculateTheoretical();
+            });
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        // Update physics parameters from sliders
+        function updateParams() {
+            state.v0 = parseFloat(document.getElementById('input-velocity').value);
+            state.angle = parseFloat(document.getElementById('input-angle').value);
+            state.y0 = parseFloat(document.getElementById('input-height').value);
+
+            document.getElementById('val-velocity').innerText = state.v0;
+            document.getElementById('val-angle').innerText = state.angle;
+            document.getElementById('val-height').innerText = state.y0;
+
+            calculateTheoretical();
+            if (!state.running) {
+                resetSim();
+            }
+        }
+
+        function setGravity(gValue, name) {
+            state.g = gValue;
+            document.getElementById('val-gravity').innerText = gValue.toFixed(2);
+            
+            // Highlight environment buttons
+            document.querySelectorAll('.env-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white');
+                btn.classList.add('bg-slate-800', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`env-${name.toLowerCase()}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-blue-600', 'text-white');
+                activeBtn.classList.remove('bg-slate-800', 'text-slate-300');
+            }
+
+            calculateTheoretical();
+            if (!state.running) resetSim();
+        }
+
+        function setSpeed(spd) {
+            state.simSpeed = spd;
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            event.target.classList.add('active', 'bg-blue-600', 'text-white');
+            event.target.classList.remove('text-slate-400');
+        }
+
+        function toggleTarget() {
+            state.targetActive = document.getElementById('chk-target').checked;
+            if (state.targetActive) {
+                // Randomize target position within reasonable distance
+                state.targetX = Math.round(state.maxDistance * (0.6 + Math.random() * 0.35));
+                state.targetY = 0;
+            }
+            drawSim();
+        }
+
+        // Calculate theoretical values (No air drag assumptions for stats box)
+        function calculateTheoretical() {
+            const rad = (state.angle * Math.PI) / 180;
+            const v0x = state.v0 * Math.cos(rad);
+            const v0y = state.v0 * Math.sin(rad);
+
+            // Time of flight solving y(t) = y0 + v0y*t - 0.5*g*t^2 = 0
+            const discriminant = v0y * v0y + 2 * state.g * state.y0;
+            state.totalTime = (v0y + Math.sqrt(discriminant)) / state.g;
+            state.maxHeight = state.y0 + (v0y * v0y) / (2 * state.g);
+            state.maxDistance = v0x * state.totalTime;
+
+            // UI updates
+            document.getElementById('stat-max-height').innerText = state.maxHeight.toFixed(2);
+            document.getElementById('stat-max-distance').innerText = state.maxDistance.toFixed(2);
+            document.getElementById('stat-total-time').innerText = state.totalTime.toFixed(2);
+        }
+
+        // Launch projectile
+        function startLaunch() {
+            if (state.running && !state.paused) return;
+            
+            if (state.paused) {
+                state.paused = false;
+                animate();
+                return;
+            }
+
+            // Reset initial condition for run
+            const rad = (state.angle * Math.PI) / 180;
+            state.x = 0;
+            state.y = state.y0;
+            state.vx = state.v0 * Math.cos(rad);
+            state.vy = state.v0 * Math.sin(rad);
+            state.t = 0;
+            state.path = [{ x: state.x, y: state.y }];
+            state.running = true;
+            state.paused = false;
+            state.targetHit = false;
+
+            // Clear analytics chart data
+            resetChartData();
+
+            animate();
+        }
+
+        function togglePause() {
+            if (!state.running) return;
+            state.paused = !state.paused;
+            if (!state.paused) animate();
+        }
+
+        function resetSim() {
+            state.running = false;
+            state.paused = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            const rad = (state.angle * Math.PI) / 180;
+            state.x = 0;
+            state.y = state.y0;
+            state.vx = state.v0 * Math.cos(rad);
+            state.vy = state.v0 * Math.sin(rad);
+            state.t = 0;
+            state.path = [];
+            state.targetHit = false;
+
+            updateTelemetry(0, state.y0, 0, state.v0);
+            drawSim();
+            resetChartData();
+        }
+
+        // Main Animation Loop
+        function animate() {
+            if (!state.running || state.paused) return;
+
+            // Sub-stepping for numerical precision with air drag
+            const subSteps = 5;
+            const dt = (state.dt * state.simSpeed) / subSteps;
+
+            for (let i = 0; i < subSteps; i++) {
+                if (state.airDrag) {
+                    const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+                    const FdragX = -state.dragCoeff * speed * state.vx;
+                    const FdragY = -state.dragCoeff * speed * state.vy;
+
+                    state.vx += FdragX * dt;
+                    state.vy += (-state.g + FdragY) * dt;
+                } else {
+                    state.vy -= state.g * dt;
+                }
+
+                state.x += state.vx * dt;
+                state.y += state.vy * dt;
+                state.t += dt;
+
+                // Target Check
+                if (state.targetActive && !state.targetHit) {
+                    const distToTarget = Math.hypot(state.x - state.targetX, state.y - state.targetY);
+                    if (distToTarget < state.targetRadius) {
+                        state.targetHit = true;
+                        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+                    }
+                }
+
+                // Check Ground Collision
+                if (state.y <= 0) {
+                    state.y = 0;
+                    state.running = false;
+                    break;
+                }
+            }
+
+            state.path.push({ x: state.x, y: state.y });
+
+            // Calculate current instantaneous velocity magnitude
+            const currentV = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+
+            // Update UI & Telemetry
+            updateTelemetry(state.x, state.y, state.t, currentV);
+            updateChart(state.t, state.y, state.vx, state.vy);
+            drawSim();
+
+            if (state.running) {
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        }
+
+        function updateTelemetry(x, y, t, v) {
+            document.getElementById('telemetry-x').innerText = x.toFixed(1);
+            document.getElementById('telemetry-y').innerText = y.toFixed(1);
+            document.getElementById('telemetry-t').innerText = t.toFixed(2);
+            document.getElementById('stat-current-vel').innerText = v.toFixed(2);
+        }
+
+        // Render Canvas Visuals
+        function drawSim() {
+            if (!ctx) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Clear Background
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, w, h);
+
+            // Calculate Scale Dynamic Factors so whole trajectory fits nicely
+            const margin = 50;
+            const maxWorldX = Math.max(state.maxDistance * 1.15, 40);
+            const maxWorldY = Math.max(state.maxHeight * 1.25, 20);
+
+            const scaleX = (w - margin * 2) / maxWorldX;
+            const scaleY = (h - margin * 2) / maxWorldY;
+            const scale = Math.min(scaleX, scaleY);
+
+            // World to Screen Coordinate Transformation Helper
+            function toScreen(wx, wy) {
+                return {
+                    x: margin + wx * scale,
+                    y: h - margin - wy * scale
+                };
+            }
+
+            // Draw Grid
+            if (state.showGrid) {
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                const step = 10; // meters per grid line
+
+                for (let gx = 0; gx < maxWorldX; gx += step) {
+                    const pos = toScreen(gx, 0);
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, 0);
+                    ctx.lineTo(pos.x, h);
+                    ctx.stroke();
+                }
+                for (let gy = 0; gy < maxWorldY; gy += step) {
+                    const pos = toScreen(0, gy);
+                    ctx.beginPath();
+                    ctx.moveTo(0, pos.y);
+                    ctx.lineTo(w, pos.y);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw Ground Axis
+            const origin = toScreen(0, 0);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, origin.y);
+            ctx.lineTo(w, origin.y);
+            ctx.stroke();
+
+            // Draw Cannon / Launch Base
+            const launchPos = toScreen(0, state.y0);
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(launchPos.x - 12, launchPos.y, 24, origin.y - launchPos.y); // Base tower
+
+            // Cannon Barrel
+            ctx.save();
+            ctx.translate(launchPos.x, launchPos.y);
+            ctx.rotate((-state.angle * Math.PI) / 180);
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(0, -6, 30, 12);
+            ctx.restore();
+
+            // Draw Target if Enabled
+            if (state.targetActive) {
+                const targetPos = toScreen(state.targetX, state.targetY);
+                ctx.fillStyle = state.targetHit ? '#10b981' : '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(targetPos.x, targetPos.y, state.targetRadius * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            }
+
+            // Draw Parabolic Theoretical Trajectory Guide Line
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const theoreticalSteps = 80;
+            for (let i = 0; i <= theoreticalSteps; i++) {
+                const tStep = (state.totalTime * i) / theoreticalSteps;
+                const rad = (state.angle * Math.PI) / 180;
+                const tx = state.v0 * Math.cos(rad) * tStep;
+                const ty = state.y0 + state.v0 * Math.sin(rad) * tStep - 0.5 * state.g * tStep * tStep;
+                const p = toScreen(tx, Math.max(0, ty));
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Draw Actual Animated Path Trace
+            if (state.path.length > 1) {
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                state.path.forEach((pt, index) => {
+                    const p = toScreen(pt.x, pt.y);
+                    if (index === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.stroke();
+            }
+
+            // Draw Projectile Ball
+            const ballPos = toScreen(state.x, state.y);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(ballPos.x, ballPos.y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw Velocity Vectors
+            if (state.showVectors && state.running) {
+                const vecScale = 0.8;
+                
+                // Vx Vector (Blue)
+                drawArrow(ctx, ballPos.x, ballPos.y, ballPos.x + state.vx * vecScale, ballPos.y, '#3b82f6');
+                // Vy Vector (Emerald)
+                drawArrow(ctx, ballPos.x, ballPos.y, ballPos.x, ballPos.y - state.vy * vecScale, '#10b981');
+                // Total V Vector (Yellow)
+                drawArrow(ctx, ballPos.x, ballPos.y, ballPos.x + state.vx * vecScale, ballPos.y - state.vy * vecScale, '#f59e0b');
+            }
+        }
+
+        // Helper function for rendering vector arrows
+        function drawArrow(context, fromx, fromy, tox, toy, color) {
+            const headlen = 8;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            
+            context.strokeStyle = color;
+            context.fillStyle = color;
+            context.lineWidth = 2;
+
+            context.beginPath();
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox, toy);
+            context.stroke();
+
+            context.beginPath();
+            context.moveTo(tox, toy);
+            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            context.closePath();
+            context.fill();
+        }
+
+        // ==========================================
+        // ANALYTICS CHART (Chart.js)
+        // ==========================================
+        let chartMode = 'position';
+
+        function initChart() {
+            const chartCtx = document.getElementById('analyticsChart').getContext('2d');
+            analyticsChart = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Height y (m)',
+                        data: [],
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Time (s)', color: '#94a3b8' },
+                            ticks: { color: '#64748b' },
+                            grid: { color: '#1e293b' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Height (m)', color: '#94a3b8' },
+                            ticks: { color: '#64748b' },
+                            grid: { color: '#1e293b' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1' } }
+                    }
+                }
+            });
+        }
+
+        function setChartType(type) {
+            chartMode = type;
+            document.getElementById('chart-btn-pos').className = type === 'position' 
+                ? 'px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium' 
+                : 'px-3 py-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg text-xs font-medium';
+            
+            document.getElementById('chart-btn-vel').className = type === 'velocity' 
+                ? 'px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium' 
+                : 'px-3 py-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg text-xs font-medium';
+
+            resetChartData();
+        }
+
+        function resetChartData() {
+            if (!analyticsChart) return;
+            analyticsChart.data.labels = [];
+            if (chartMode === 'position') {
+                analyticsChart.data.datasets = [{
+                    label: 'Height y (m)',
+                    data: [],
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0
+                }];
+                analyticsChart.options.scales.y.title.text = 'Height (m)';
+            } else {
+                analyticsChart.data.datasets = [
+                    {
+                        label: 'Vx (Horizontal)',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Vy (Vertical)',
+                        data: [],
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }
+                ];
+                analyticsChart.options.scales.y.title.text = 'Velocity (m/s)';
+            }
+            analyticsChart.update();
+        }
+
+        function updateChart(t, y, vx, vy) {
+            if (!analyticsChart) return;
+            
+            if (chartMode === 'position') {
+                analyticsChart.data.datasets[0].data.push({ x: t, y: y });
+            } else {
+                analyticsChart.data.datasets[0].data.push({ x: t, y: vx });
+                analyticsChart.data.datasets[1].data.push({ x: t, y: vy });
+            }
+            analyticsChart.update('none'); // Update without full recalculation animation for performance
+        }
+
+        // ==========================================
+        // INTERACTIVE QUIZ DATA & ENGINE
+        // ==========================================
+        const quizQuestions = [
+            {
+                question: "At what point in a projectile's trajectory is its vertical velocity ($v_y$) equal to zero?",
+                options: [
+                    "At the moment of launch",
+                    "At the maximum height (peak)",
+                    "Right before striking the ground",
+                    "Vertical velocity is never zero"
+                ],
+                correct: 1,
+                explanation: "At the peak height of a parabolic arc, the projectile stops moving upwards and begins falling downwards. Thus, its vertical velocity component $v_y = 0$ momentarily."
+            },
+            {
+                question: "If you neglect air resistance, what happens to the horizontal velocity component ($v_x$) during flight?",
+                options: [
+                    "It continuously increases",
+                    "It continuously decreases due to gravity",
+                    "It remains constant throughout flight",
+                    "It drops to zero at maximum height"
+                ],
+                correct: 2,
+                explanation: "Gravity acts purely downwards ($a_y = -g$). Since no horizontal forces act on the object ($a_x = 0$), the horizontal velocity $v_x$ remains completely constant."
+            },
+            {
+                question: "Two objects are launched at equal speeds: Ball A at $30^\circ$ and Ball B at $60^\circ$. Assuming level ground, how do their horizontal ranges compare?",
+                options: [
+                    "Ball B travels further",
+                    "Ball A travels further",
+                    "Both travel the exact same horizontal range",
+                    "It depends on the mass of the balls"
+                ],
+                correct: 2,
+                explanation: "Complementary launch angles (angles that sum to $90^\circ$, like $30^\circ$ and $60^\circ$) yield the identical horizontal range because $\sin(2 \cdot 30^\circ) = \sin(2 \cdot 60^\circ) = \sin(60^\circ) = \sin(120^\circ) = \frac{\sqrt{3}}{2}$."
+            },
+            {
+                question: "How does launching a projectile on the Moon ($g = 1.62 \\text{ m/s}^2$) compare to Earth ($g = 9.81 \\text{ m/s}^2$)?",
+                options: [
+                    "Max height increases, range decreases",
+                    "Both time of flight and horizontal range increase significantly",
+                    "Time of flight decreases because gravity is weaker",
+                    "There is no change in horizontal range"
+                ],
+                correct: 1,
+                explanation: "Since gravity $g$ is in the denominator of both time of flight ($T \\propto 1/g$) and range ($R \\propto 1/g$), weaker gravity results in a much higher, longer-lasting, and further launch."
+            }
+        ];
+
+        let currentQIndex = 0;
+        let score = 0;
+        let answered = false;
+
+        function renderQuizQuestion() {
+            const container = document.getElementById('quiz-container');
+            const q = quizQuestions[currentQIndex];
+            answered = false;
+
+            document.getElementById('btn-next-q').classList.add('hidden');
+            document.getElementById('quiz-score').innerText = `${score} / ${quizQuestions.length}`;
+
+            let html = `
+                <div class="space-y-3">
+                    <span class="text-xs font-semibold text-blue-400">Question ${currentQIndex + 1} of ${quizQuestions.length}</span>
+                    <h3 class="text-lg font-bold text-white">${q.question}</h3>
+                </div>
+                <div class="grid grid-cols-1 gap-2.5 mt-4">
+            `;
+
+            q.options.forEach((opt, idx) => {
+                html += `
+                    <button onclick="selectOption(${idx})" id="opt-${idx}" class="opt-btn w-full text-left p-3.5 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:bg-slate-800 text-sm font-medium text-slate-200 transition">
+                        ${opt}
+                    </button>
+                `;
+            });
+
+            html += `</div><div id="quiz-explanation" class="hidden p-4 rounded-xl text-xs leading-relaxed border mt-4"></div>`;
+
+            container.innerHTML = html;
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function selectOption(index) {
+            if (answered) return;
+            answered = true;
+
+            const q = quizQuestions[currentQIndex];
+            const explanationBox = document.getElementById('quiz-explanation');
+
+            document.querySelectorAll('.opt-btn').forEach((btn, idx) => {
+                if (idx === q.correct) {
+                    btn.classList.add('bg-emerald-950/80', 'border-emerald-500', 'text-emerald-300');
+                } else if (idx === index) {
+                    btn.classList.add('bg-red-950/80', 'border-red-500', 'text-red-300');
+                }
+            });
+
+            if (index === q.correct) {
+                score++;
+                document.getElementById('quiz-score').innerText = `${score} / ${quizQuestions.length}`;
+                explanationBox.className = 'p-4 rounded-xl text-xs leading-relaxed border mt-4 bg-emerald-950/40 border-emerald-500/40 text-emerald-300';
+                explanationBox.innerHTML = `<b>Correct!</b> ${q.explanation}`;
+            } else {
+                explanationBox.className = 'p-4 rounded-xl text-xs leading-relaxed border mt-4 bg-red-950/40 border-red-500/40 text-red-300';
+                explanationBox.innerHTML = `<b>Incorrect.</b> ${q.explanation}`;
+            }
+
+            explanationBox.classList.remove('hidden');
+            document.getElementById('btn-next-q').classList.remove('hidden');
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function nextQuestion() {
+            if (currentQIndex < quizQuestions.length - 1) {
+                currentQIndex++;
+                renderQuizQuestion();
+            } else {
+                showQuizResults();
+            }
+        }
+
+        function showQuizResults() {
+            const container = document.getElementById('quiz-container');
+            document.getElementById('btn-next-q').classList.add('hidden');
+
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+            container.innerHTML = `
+                <div class="text-center py-8 space-y-4">
+                    <div class="inline-flex p-4 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                        <i data-lucide="award" class="w-12 h-12"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">Quiz Completed!</h3>
+                    <p class="text-slate-300 text-sm">You scored <b>${score}</b> out of <b>${quizQuestions.length}</b>.</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function resetQuiz() {
+            currentQIndex = 0;
+            score = 0;
+            renderQuizQuestion();
+        }
+
+        // ==========================================
+        // FLASHCARDS DATA & ENGINE
+        // ==========================================
+        const flashcards = [
+            {
+                q: "What angle yields the maximum horizontal range on flat ground?",
+                a: "<b>45 Degrees.</b> <br>The range formula is $R = \\frac{v_0^2 \\sin(2\\theta)}{g}$. Since $\\sin(\\theta)$ reaches its max value of $1$ at $90^\\circ$, setting $2\\theta = 90^\\circ$ gives $\\theta = 45^\\circ$."
+            },
+            {
+                q: "What is the vertical velocity component of a projectile at its peak?",
+                a: "<b>Zero ($v_y = 0$).</b> <br>The projectile stops ascending before starting its descent. However, note that horizontal velocity $v_x$ remains non-zero!"
+            },
+            {
+                q: "How does projectile mass affect its trajectory in a vacuum?",
+                a: "<b>It has no effect!</b> <br>According to Newton's equations of motion, acceleration due to gravity ($g$) is independent of mass ($m$). All objects fall and follow trajectories at identical rates regardless of mass."
+            },
+            {
+                q: "What are complementary angles in projectile motion?",
+                a: "<b>Angles that sum to $90^\circ$ (e.g., $30^\circ$ & $60^\circ$).</b> <br>Launching at complementary angles with equal velocity yields the exact same horizontal range."
+            },
+            {
+                q: "What shape does a projectile path form without air resistance?",
+                a: "<b>A Parabola.</b> <br>Combining constant horizontal motion ($x = v_0 t$) with quadratically accelerating vertical motion ($y = v_0 t - \\frac{1}{2}g t^2$) forms a quadratic equation $y(x)$, which is a parabola."
+            }
+        ];
+
+        let fcIndex = 0;
+        let isFlipped = false;
+
+        function updateFlashcard() {
+            isFlipped = false;
+            const cardInner = document.getElementById('flashcard-inner');
+            cardInner.classList.remove('rotate-y-180');
+
+            document.getElementById('fc-num').innerText = fcIndex + 1;
+            document.getElementById('fc-front').innerHTML = flashcards[fcIndex].q;
+            document.getElementById('fc-back').innerHTML = flashcards[fcIndex].a;
+            document.getElementById('fc-index').innerText = fcIndex + 1;
+            document.getElementById('fc-total').innerText = flashcards.length;
+
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function flipCard() {
+            isFlipped = !isFlipped;
+            const cardInner = document.getElementById('flashcard-inner');
+            if (isFlipped) {
+                cardInner.classList.add('rotate-y-180');
+            } else {
+                cardInner.classList.remove('rotate-y-180');
+            }
+        }
+
+        function nextFlashcard() {
+            if (fcIndex < flashcards.length - 1) {
+                fcIndex++;
+                updateFlashcard();
+            }
+        }
+
+        function prevFlashcard() {
+            if (fcIndex > 0) {
+                fcIndex--;
+                updateFlashcard();
+            }
+        }
+    </script>
+</body>
+</html>
